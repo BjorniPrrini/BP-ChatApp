@@ -3,3 +3,8 @@ target/
 *.iml
 .DS_Store
 *.part
+
+/backend/uploads/*
+!/backend/uploads/avatars/
+/backend/uploads/avatars/*
+!/backend/uploads/avatars/default-avatar.png
