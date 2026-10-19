@@ -6,6 +6,7 @@
       <list>
         <option value="$PROJECT_DIR$/backend/chatAppBackend/pom.xml" />
         <option value="$PROJECT_DIR$/frontend/frontend/pom.xml" />
+        <option value="$PROJECT_DIR$/launcher/pom.xml" />
       </list>
     </option>
   </component>

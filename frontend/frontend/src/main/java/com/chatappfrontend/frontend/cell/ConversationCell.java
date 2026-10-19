@@ -40,7 +40,7 @@ public class ConversationCell extends ListCell<SearchResultItem> {
         HBox cell = switch (item) {
             case SearchResultItem.ConversationResult(ConversationResponseDTO conversation) -> buildConversationRow(conversation);
             case SearchResultItem.MessageResult(MessageSearchResultResponseDTO message) -> buildMessageRow(message);
-            case SearchResultItem.LoadingResult ignored -> buildLoadingRow();
+            case SearchResultItem.LoadingResult _ -> buildLoadingRow();
         };
 
         cell.setAlignment(Pos.CENTER_LEFT);

@@ -1,0 +1,57 @@
+.launcher-root {
+    -launcher-bg: #0a0a0a;
+    -launcher-text: #f5f5f5;
+    -launcher-muted: #8a8f98;
+    -launcher-track: #1f1f1f;
+    -launcher-fill: #f5f5f5;
+
+    -fx-background-color: -launcher-bg;
+    -fx-font-family: "Segoe UI";
+}
+
+.title-label {
+    -fx-font-size: 36px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -launcher-text;
+}
+
+.status-label {
+    -fx-font-size: 15px;
+    -fx-text-fill: -launcher-muted;
+    -fx-text-alignment: center;
+}
+
+.percent-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: -launcher-muted;
+}
+
+.progress-indicator {
+    -fx-progress-color: -launcher-fill;
+}
+
+.progress-bar > .track {
+    -fx-background-color: -launcher-track;
+    -fx-background-insets: 0;
+    -fx-background-radius: 6;
+}
+
+.progress-bar > .bar {
+    -fx-background-color: -launcher-fill;
+    -fx-background-insets: 0;
+    -fx-background-radius: 6;
+    -fx-padding: 4px;
+}
+
+.launcher-button {
+    -fx-background-color: -launcher-fill;
+    -fx-text-fill: #000000;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 10 28;
+    -fx-cursor: hand;
+}
+
+.launcher-button:hover {
+    -fx-background-color: #d4d4d4;
+}
