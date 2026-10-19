@@ -121,21 +121,83 @@
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
-                <executions>
-                    <execution>
-                        <id>default-cli</id>
-                        <configuration>
-                            <mainClass>com.chatappfrontend.frontend/com.chatappfrontend.frontend.Launcher</mainClass>
-                            <launcher>app</launcher>
-                            <jlinkZipName>app</jlinkZipName>
-                            <jlinkImageName>app</jlinkImageName>
-                            <noManPages>true</noManPages>
-                            <stripDebug>true</stripDebug>
-                            <noHeaderFiles>true</noHeaderFiles>
-                        </configuration>
-                    </execution>
-                </executions>
+                <configuration>
+                    <mainClass>com.chatappfrontend.frontend/com.chatappfrontend.frontend.Launcher</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>app-image</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.8.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-app-dependencies</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/jpackage-input</outputDirectory>
+                                    <includeScope>runtime</includeScope>
+                                    <excludeArtifactIds>lombok</excludeArtifactIds>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <version>3.4.2</version>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/jpackage-input</outputDirectory>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.panteleyev</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <version>1.8.0</version>
+                        <executions>
+                            <execution>
+                                <id>build-app-image</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jpackage</goal>
+                                </goals>
+                                <configuration>
+                                    <name>BP-Chat</name>
+                                    <type>APP_IMAGE</type>
+                                    <appVersion>1.0.0</appVersion>
+                                    <input>${project.build.directory}/jpackage-input</input>
+                                    <destination>${project.build.directory}/dist</destination>
+                                    <mainJar>${project.build.finalName}.jar</mainJar>
+                                    <mainClass>com.chatappfrontend.frontend.Launcher</mainClass>
+                                    <addModules>
+                                        <addModule>java.base</addModule>
+                                        <addModule>java.desktop</addModule>
+                                        <addModule>java.logging</addModule>
+                                        <addModule>java.management</addModule>
+                                        <addModule>java.naming</addModule>
+                                        <addModule>java.net.http</addModule>
+                                        <addModule>java.prefs</addModule>
+                                        <addModule>java.scripting</addModule>
+                                        <addModule>java.sql</addModule>
+                                        <addModule>java.xml</addModule>
+                                        <addModule>jdk.unsupported</addModule>
+                                    </addModules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
