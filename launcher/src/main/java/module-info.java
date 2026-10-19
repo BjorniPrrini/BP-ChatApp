@@ -2,7 +2,6 @@ module com.chatapplauncher.launcher {
     requires javafx.controls;
     requires javafx.fxml;
 
-    requires org.controlsfx.controls;
     requires static lombok;
 
     requires java.net.http;

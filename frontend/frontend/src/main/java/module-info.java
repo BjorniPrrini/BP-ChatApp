@@ -8,7 +8,6 @@ module com.chatappfrontend.frontend {
     requires java.net.http;
     requires com.fasterxml.jackson.databind;
     requires java.desktop;
-    requires tools.jackson.databind;
     requires com.fasterxml.jackson.datatype.jsr310;
     requires okhttp3;
 
