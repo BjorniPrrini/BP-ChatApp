@@ -48,7 +48,7 @@ public class ConversationController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/convesation/{conversationId}/participant/{participantToKickId}")
+    @DeleteMapping("/conversation/{conversationId}/participant/{participantToKickId}")
     public ResponseEntity<Void> kickParticipant(@PathVariable Long participantToKickId, @PathVariable Long conversationId){
         service.kickParticipant(getUser().getId(), participantToKickId, conversationId);
 

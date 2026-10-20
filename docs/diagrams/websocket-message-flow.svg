@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1251" height="737" viewBox="0 0 1251 737" role="img" aria-labelledby="title desc">
+<title id="title">WebSocket message flow</title><desc id="desc">Sequence diagram with participant lanes and vertically ordered message events.</desc>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<style>text{font-family:Arial,Helvetica,sans-serif;fill:#0f172a} .hdr{font-size:13px;font-weight:600} .msg{font-size:12px} .ctrl{font-size:12px;font-weight:600} .lane{stroke:#cbd5e1;stroke-width:1.2;stroke-dasharray:5 5} .req{stroke:#475569;stroke-width:1.4;fill:none;marker-end:url(#arrow)} .resp{stroke:#64748b;stroke-width:1.4;stroke-dasharray:6 4;fill:none;marker-end:url(#arrow)} .self{stroke:#475569;stroke-width:1.4;fill:none;marker-end:url(#arrow)}</style>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#475569"/></marker></defs>
+<rect x="55.0" y="28" width="151" height="46" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+<text class="hdr" text-anchor="middle" x="130.5" y="47.0">JavaFX</text>
+<text class="hdr" text-anchor="middle" x="130.5" y="63.0">ChatPageController</text>
+<rect x="220.0" y="28" width="151" height="42" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+<text class="hdr" text-anchor="middle" x="295.5" y="53.0">WebSocketService</text>
+<rect x="385.0" y="28" width="151" height="42" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+<text class="hdr" text-anchor="middle" x="460.5" y="53.0">STOMP endpoint /ws</text>
+<rect x="550.0" y="28" width="151" height="42" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+<text class="hdr" text-anchor="middle" x="625.5" y="53.0">StompAuthInterceptor</text>
+<rect x="715.0" y="28" width="151" height="42" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+<text class="hdr" text-anchor="middle" x="790.5" y="53.0">WebSocketController</text>
+<rect x="880.0" y="28" width="151" height="42" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+<text class="hdr" text-anchor="middle" x="955.5" y="53.0">MessageService</text>
+<rect x="1045.0" y="28" width="151" height="42" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+<text class="hdr" text-anchor="middle" x="1120.5" y="53.0">PostgreSQL</text>
+<line class="lane" x1="130.5" y1="80" x2="130.5" y2="715"/>
+<line class="lane" x1="295.5" y1="80" x2="295.5" y2="715"/>
+<line class="lane" x1="460.5" y1="80" x2="460.5" y2="715"/>
+<line class="lane" x1="625.5" y1="80" x2="625.5" y2="715"/>
+<line class="lane" x1="790.5" y1="80" x2="790.5" y2="715"/>
+<line class="lane" x1="955.5" y1="80" x2="955.5" y2="715"/>
+<line class="lane" x1="1120.5" y1="80" x2="1120.5" y2="715"/>
+<text class="msg" text-anchor="middle" x="213.0" y="102.0">send</text>
+<text class="msg" text-anchor="middle" x="213.0" y="117.0">MessageRequestDTO</text>
+<line class="req" x1="135.5" y1="138.0" x2="288.5" y2="138.0"/>
+<title>JavaFX ChatPageController → WebSocketService: send MessageRequestDTO</title>
+<text class="msg" text-anchor="middle" x="378.0" y="158.0">STOMP SEND to app</text>
+<text class="msg" text-anchor="middle" x="378.0" y="173.0">destination</text>
+<line class="req" x1="300.5" y1="194.0" x2="453.5" y2="194.0"/>
+<title>WebSocketService → STOMP endpoint /ws: STOMP SEND to app destination</title>
+<text class="msg" text-anchor="middle" x="543.0" y="214.0">authenticate</text>
+<text class="msg" text-anchor="middle" x="543.0" y="229.0">principal</text>
+<line class="req" x1="465.5" y1="250.0" x2="618.5" y2="250.0"/>
+<title>STOMP endpoint /ws → StompAuthInterceptor: authenticate principal</title>
+<text class="msg" text-anchor="middle" x="708.0" y="270.0">authenticated</text>
+<text class="msg" text-anchor="middle" x="708.0" y="285.0">Principal</text>
+<line class="resp" x1="630.5" y1="306.0" x2="783.5" y2="306.0"/>
+<title>StompAuthInterceptor → WebSocketController: authenticated Principal</title>
+<text class="msg" text-anchor="middle" x="873.0" y="326.0">sendMessage(userId</text>
+<text class="msg" text-anchor="middle" x="873.0" y="341.0">, request)</text>
+<line class="req" x1="795.5" y1="362.0" x2="948.5" y2="362.0"/>
+<title>WebSocketController → MessageService: sendMessage(userId, request)</title>
+<text class="msg" text-anchor="middle" x="1038.0" y="382.0">persist message</text>
+<text class="msg" text-anchor="middle" x="1038.0" y="397.0">and state</text>
+<line class="req" x1="960.5" y1="418.0" x2="1113.5" y2="418.0"/>
+<title>MessageService → PostgreSQL: persist message and state</title>
+<text class="msg" text-anchor="middle" x="1038.0" y="438.0">saved message</text>
+<line class="resp" x1="1115.5" y1="459.0" x2="962.5" y2="459.0"/>
+<title>PostgreSQL → MessageService: saved message</title>
+<text class="msg" text-anchor="middle" x="873.0" y="486.0">MessageResponseDTO</text>
+<line class="resp" x1="950.5" y1="507.0" x2="797.5" y2="507.0"/>
+<title>MessageService → WebSocketController: MessageResponseDTO</title>
+<text class="msg" text-anchor="middle" x="625.5" y="534.0">publish conversation topic event</text>
+<line class="resp" x1="785.5" y1="555.0" x2="467.5" y2="555.0"/>
+<title>WebSocketController → STOMP endpoint /ws: publish conversation topic event</title>
+<text class="msg" text-anchor="middle" x="378.0" y="582.0">broadcast to</text>
+<text class="msg" text-anchor="middle" x="378.0" y="597.0">subscribers</text>
+<line class="resp" x1="455.5" y1="618.0" x2="302.5" y2="618.0"/>
+<title>STOMP endpoint /ws → WebSocketService: broadcast to subscribers</title>
+<text class="msg" text-anchor="middle" x="213.0" y="638.0">event callback /</text>
+<text class="msg" text-anchor="middle" x="213.0" y="653.0">refresh message</text>
+<text class="msg" text-anchor="middle" x="213.0" y="668.0">view</text>
+<line class="resp" x1="290.5" y1="689.0" x2="137.5" y2="689.0"/>
+<title>WebSocketService → JavaFX ChatPageController: event callback / refresh message view</title>
+</svg>

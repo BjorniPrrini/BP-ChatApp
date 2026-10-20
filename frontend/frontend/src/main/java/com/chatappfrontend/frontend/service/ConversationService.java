@@ -112,7 +112,7 @@ public class ConversationService {
 
     public void kickParticipant(Long conversationId, Long participantToKickId) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + "/convesation/" + conversationId + "/participant/" + participantToKickId))
+                .uri(URI.create(BASE_URL + "/conversation/" + conversationId + "/participant/" + participantToKickId))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + SessionManager.getInstance().getToken())
                 .DELETE()
