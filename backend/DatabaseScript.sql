@@ -43,25 +43,6 @@ CREATE TABLE messages(
     sent_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE message_attachments(
-    id BIGSERIAL PRIMARY KEY,
-    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
-    file_url VARCHAR(500) NOT NULL,
-    file_name VARCHAR(255) NOT NULL,
-    file_type VARCHAR(100),
-    file_size BIGINT,
-    uploaded_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE message_reactions(
-    id BIGSERIAL PRIMARY KEY,
-    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    emoji VARCHAR(10) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(message_id, user_id, emoji)
-);
-
 CREATE TABLE message_reads(
     message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -134,7 +115,7 @@ CREATE TABLE conversation_summaries(
 );
 
 CREATE TABLE user_summary_quota(
-    user_id BIGINT PRIMARY KEY REFERENCES users(id),
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     remaining_quota INT NOT NULL DEFAULT 5,
     last_reset_date DATE NOT NULL DEFAULT CURRENT_DATE
 );

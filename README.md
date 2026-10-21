@@ -33,7 +33,7 @@ This README documents the repository as it exists in source. Exact behavior is e
 
 ## Viewing the diagrams
 
-The Mermaid source is kept in this README so diagrams remain editable as text and render automatically on GitHub. Each diagram also has a full-size **SVG** version under [`docs/diagrams/`](docs/diagrams/). Open an SVG link for sharper zooming and inspection of class names and dependency arrows. The SVGs preserve the same main components, messages, and relationships; their layout may differ slightly from GitHub's Mermaid rendering.
+The Mermaid source is kept in this README so diagrams remain editable as text and render automatically on GitHub. 
 
 ---
 
@@ -52,7 +52,7 @@ The Mermaid source is kept in this README so diagrams remain editable as text an
 - Send, page through, edit, and delete messages for yourself or for everyone.
 - Message delivery and read-state tracking through STOMP/WebSocket messages.
 - Group membership management, including add/remove/leave, promotion/demotion, group metadata, and invitation permissions.
-- Message reactions, attachments, deletion records, read records, and delivery records represented in the backend persistence model.
+- Message deletion records, read records, and delivery records represented in the backend persistence model.
 
 ### Social features
 - Send, accept, reject, list, and remove friend relationships.
@@ -120,8 +120,6 @@ flowchart TB
     Services --> Files
 ```
 
-**Full-size diagram:** [Open System architecture as SVG](docs/diagrams/system-architecture.svg)
-
 ### Runtime boundaries
 
 | Component | Responsibility | Main integration boundary |
@@ -186,8 +184,6 @@ ChatApp/
 │       │   └── exception/               Domain/integration exceptions
 │       └── resources/application.properties
 ├── compose.yaml                        Redis service for local development
-├── docs/
-│   └── diagrams/                       Full-size SVG exports for the README diagrams
 └── .gitignore
 ```
 
@@ -546,8 +542,6 @@ classDiagram
     PlatformUtil --> OperatingSystem : detects platform
 ```
 
-**Full-size diagram:** [Open Launcher class relationship diagram as SVG](docs/diagrams/launcher-class-diagram.svg)
-
 ### Update lifecycle
 
 ```mermaid
@@ -582,8 +576,6 @@ sequenceDiagram
       Manager-->>UI: Status or failure state
     end
 ```
-
-**Full-size diagram:** [Open Launcher update lifecycle as SVG](docs/diagrams/launcher-update-lifecycle.svg)
 
 ### Publishing a launcher-compatible release
 
@@ -649,7 +641,7 @@ The frontend is a JavaFX desktop application. FXML defines view structure, CSS d
 |---|---|
 | `manager.ConversationListManager` | Maintains/refreshes the conversation list and its UI state. |
 | `manager.WebSocketConnectionManager` | Coordinates WebSocket connection lifecycle. |
-| `manager.MessageActionManager` | Coordinates message actions (edit/delete/reaction-related UI behavior where wired). |
+| `manager.MessageActionManager` | Coordinates message actions (edit/delete). |
 | `manager.MessagePaginationManager` | Loads earlier message pages and coordinates message-history pagination. |
 | `manager.MessageSearchManager` | Coordinates search UI/results and navigation to a matching message/conversation. |
 | `manager.MessageEventManager` | Handles incoming message/status events and updates visible state. |
@@ -832,8 +824,6 @@ flowchart TB
     UserService -.-> UserResponseDTO
 
 ```
-
-**Full-size diagram:** [Open Frontend dependency diagram as SVG](docs/diagrams/frontend-dependencies.svg)
 
 This is a responsibility/dependency view, not a guarantee that every listed class is called directly by every controller. Some UI wiring is performed through FXML and manager callbacks, and the exact call graph depends on the active screen flow.
 
@@ -1087,8 +1077,6 @@ flowchart TB
 
 ```
 
-**Full-size diagram:** [Open Backend dependency diagram as SVG](docs/diagrams/backend-dependencies.svg)
-
 The diagram is intentionally focused on the main dependencies. It omits many secondary repository calls and entity associations to remain readable; the final combined diagram below includes the main classes across all three modules.
 
 ---
@@ -1143,7 +1131,7 @@ The controllers generally obtain the current `User` from Spring Security. The AP
 
 | Method | Endpoint | Input | Returns | Authentication | Description |
 |---|---|---|---|---|---|
-| `POST` | `/api/message/sendMessage` | JSON `MessageRequestDTO` (conversation ID and message content/attachments fields supported by DTO) | `MessageResponseDTO` | Required | Persists a message for the authenticated sender. This REST path exists alongside the WebSocket send path. |
+| `POST` | `/api/message/sendMessage` | JSON `MessageRequestDTO` (conversation ID and message content fields supported by DTO) | `MessageResponseDTO` | Required | Persists a message for the authenticated sender. This REST path exists alongside the WebSocket send path. |
 | `GET` | `/api/message/{conversationId}` | Path `conversationId`; optional ISO local datetime query `before` | `MessagePageDTO` | Required | Returns a page of messages before the supplied timestamp. If `before` is omitted, the controller uses server `LocalDateTime.now()`. |
 | `DELETE` | `/api/message/{messageId}/me` | Path `messageId` | Empty body, HTTP 200 on success | Required | Hides/deletes the message for the current user only, using per-user deletion state. |
 | `DELETE` | `/api/message/{messageId}/everyone` | Path `messageId` | Empty body, HTTP 200 on success | Required | Deletes the message for everyone when allowed by the service's ownership/rules. |
@@ -1248,8 +1236,6 @@ sequenceDiagram
     WS-->>UI: event callback / refresh message view
 ```
 
-**Full-size diagram:** [Open WebSocket message flow as SVG](docs/diagrams/websocket-message-flow.svg)
-
 ---
 
 ## Persistence model
@@ -1262,8 +1248,6 @@ The backend maps its domain into PostgreSQL using JPA entities. The principal en
 | `Conversation` | Direct/group conversation metadata. |
 | `ConversationParticipant` and `ConversationParticipantId` | Membership and participant-level properties/role, including composite identity. |
 | `Message` | Persisted chat message content and sender/conversation association. |
-| `MessageAttachment` | Attachment metadata associated with messages. |
-| `MessageReaction` | Reaction records associated with messages/users. |
 | `MessageDelivery` and `MessageDeliveryId` | Delivery state and composite identity. |
 | `MessageRead` and `MessageReadId` | Read state and composite identity. |
 | `MessageDelete` and `MessageDeleteId` | Per-user message deletion/hide state. |
@@ -1291,20 +1275,14 @@ flowchart TB
 
     subgraph MESSAGE_DETAILS[Message-related records]
         direction TB
-        ATTACHMENT[MessageAttachment]
-        REACTION[MessageReaction]
         DELIVERY[MessageDelivery]
         READ[MessageRead]
         DELETE[MessageDelete]
         EMBEDDING[MessageEmbedding]
-        ATTACHMENT ~~~ REACTION
-        REACTION ~~~ DELIVERY
         DELIVERY ~~~ READ
         READ ~~~ DELETE
         DELETE ~~~ EMBEDDING
     end
-    MESSAGE -->|has| ATTACHMENT
-    MESSAGE -->|receives| REACTION
     MESSAGE -->|tracks delivery| DELIVERY
     MESSAGE -->|tracks read state| READ
     MESSAGE -->|hidden for user| DELETE
@@ -1328,8 +1306,6 @@ flowchart TB
     SUMMARY[ConversationSummary]
     CONVERSATION -->|summarized by| SUMMARY
 ```
-
-**Full-size diagram:** [Open Persistence model as SVG](docs/diagrams/persistence-model.svg)
 
 This ER view is conceptual: exact cardinality, join columns, uniqueness constraints, cascade behavior, and whether summary rows are one-per-conversation or versioned must be read from the `@Entity` mappings and repository methods. It is not a generated DDL specification.
 
@@ -1362,8 +1338,6 @@ sequenceDiagram
     API->>Security: JwtAuthFilter validates token
     Security-->>API: authenticated principal
 ```
-
-**Full-size diagram:** [Open Login and authenticated REST flow as SVG](docs/diagrams/login-authentication-flow.svg)
 
 ### Friend request to direct conversation
 
@@ -1724,7 +1698,4 @@ flowchart TB
     AS <--> MAIL
     US --> FILES
 ```
-
-**Full-size diagram:** [Open Combined engineering diagram as SVG](docs/diagrams/combined-engineering-diagram.svg)
-
 ---
