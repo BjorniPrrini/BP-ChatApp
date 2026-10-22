@@ -59,3 +59,20 @@ jobs:
         working-directory: frontend/frontend/target/dist
         shell: bash
         run: ditto -c -k --keepParent BP-Chat.app ../bpchat-mac.zip
+
+      - name: Checksum - Linux and Windows
+        if: matrix.label != 'mac'
+        working-directory: frontend/frontend/target
+        shell: bash
+        run: sha256sum bpchat-${{ matrix.label }}.zip > bpchat-${{ matrix.label }}.zip.sha256
+
+      - name: Checksum - Mac
+        if: matrix.label == 'mac'
+        working-directory: frontend/frontend/target
+        shell: bash
+        run: shasum -a 256 bpchat-mac.zip > bpchat-mac.zip.sha256
+
+      - name: Show zips and checksums
+        working-directory: frontend/frontend/target
+        shell: bash
+        run: ls -l bpchat-* && cat bpchat-*.sha256
