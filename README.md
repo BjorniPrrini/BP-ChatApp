@@ -183,6 +183,8 @@ ChatApp/
 │       │   ├── config/                 Security, WebSocket, mail, MVC, scheduling
 │       │   └── exception/               Domain/integration exceptions
 │       └── resources/application.properties
+├── .github/workflows/
+│   └── release.yml                     GitHub Actions: builds the per-OS packages and publishes a release on version tags
 ├── compose.yaml                        Redis service for local development
 └── .gitignore
 ```
@@ -379,7 +381,7 @@ cd launcher
 mvn clean javafx:run
 ```
 
-The launcher checks the configured GitHub repository's latest release and looks for the platform-specific assets. For a first-time launch, the release must contain the expected ZIP asset and corresponding `.sha256` file. If the release assets are not published yet, test the frontend directly while you finish the release pipeline.
+The launcher checks the configured GitHub repository's latest release and looks for the platform-specific assets. For a first-time launch, the release must contain the expected ZIP asset and corresponding `.sha256` file. If no valid release exists yet (see [Publishing a launcher-compatible release](#publishing-a-launcher-compatible-release)), a first launch reports that it could not reach the update server; start the frontend directly instead.
 
 ---
 
@@ -486,6 +488,8 @@ mvn clean package
 
 The POMs include JUnit dependencies and backend test starter dependencies, but dependency presence is not evidence that every feature has automated coverage. Run the commands above and inspect test reports under `target/surefire-reports/`. Treat a successful compile as compile verification, not proof that authentication, updater rollback, file upload, AI quota, and WebSocket behavior all work correctly.
 
+The GitHub Actions release workflow builds only the frontend (`./mvnw -Papp-image clean package` in `frontend/frontend`). Maven runs any frontend tests during that build, so a failing test fails the build and no release is published. There is currently no separate workflow that runs tests on every push or pull request, and the backend and launcher are not built in CI.
+
 ---
 
 # Launcher
@@ -498,7 +502,11 @@ The launcher is a standalone JavaFX application. It is intentionally separate fr
 - `bpchat-linux.zip` and `bpchat-linux.zip.sha256`
 - `bpchat-mac.zip` and `bpchat-mac.zip.sha256`
 
-The checksum file must match the asset and checksum format expected by `ChecksumUtil`. A release with a ZIP but no matching checksum may not be installable. The release assets need to be built for the target operating system and contain the expected frontend application-image layout.
+Each platform has two assets: the ZIP, which contains the application itself (the frontend application image with its own Java runtime), and a small text file with the ZIP's SHA-256 checksum, which the launcher uses to detect a corrupted download before installing. The launcher only needs the pair for its own operating system and ignores the others, so a release contains six assets in total. A release with a ZIP but no matching checksum file is not installable.
+
+The launcher reads the checksum file as text and uses only its first whitespace-separated word, which must be 64 hexadecimal characters. The standard `sha256sum` / `shasum -a 256` output (hash, then file name) is therefore accepted. `ChecksumUtil` computes the SHA-256 of the downloaded file, and the two values are compared before anything is installed.
+
+The release's tag must have the form `vMAJOR.MINOR.PATCH` (for example `v1.2.3`; the `v` is optional). `VersionComparator` rejects any other format, including suffixes such as `-beta` or `-test`, and the launcher then treats the release as unusable. Because the GitHub API's "latest release" is the newest published release, a release with an invalid tag stops new installs from finding a usable release until a valid one is published.
 
 ## Launcher classes
 
@@ -512,7 +520,7 @@ The checksum file must match the asset and checksum format expected by `Checksum
 | `model.LauncherState` | Represents launcher states such as checking, downloading, installing, and failure. | Makes asynchronous progress and failure states explicit. |
 | `model.OperatingSystem` | Represents supported OS targets. | Provides a stable platform identifier for asset selection. |
 | `model.ReleaseInfo` | Holds parsed release metadata, including version and asset information. | Separates GitHub API response parsing from update decisions. |
-| `service.ReleaseClient` | Calls GitHub's latest-release API and parses release metadata. | Encapsulates the external release API. |
+| `service.ReleaseClient` | Calls GitHub's latest-release API, selects the asset pair for the current OS, downloads the `.sha256` text and parses the expected hash. | Encapsulates the external release API. |
 | `service.Downloader` | Downloads a release asset to a temporary/partial file. | Isolates transfer and progress behavior from installation. |
 | `service.Installer` | Unpacks/stages the downloaded frontend and coordinates replacement of the installed version. | Handles filesystem changes as a distinct operation. |
 | `service.InstallStore` | Manages the local installed-version/installation metadata used by launcher logic. | Keeps install-state persistence out of the controller. |
@@ -579,12 +587,38 @@ sequenceDiagram
 
 ### Publishing a launcher-compatible release
 
-1. Build a frontend application image on the target operating system using the `app-image` profile.
-2. Package the generated application image into the ZIP structure expected by `Installer` and `FrontendStarter`.
-3. Name each platform asset exactly as the `LauncherConfig` constants require.
-4. Generate a SHA-256 checksum file for each ZIP. Ensure its contents/format match `ChecksumUtil`'s parser; do not simply assume every `sha256sum` output format is accepted without checking.
-5. Publish the ZIPs and checksum files as assets of a GitHub Release in the configured repository.
-6. Test both first install and update-over-existing-install. Also test interrupted downloads, a bad checksum, missing assets, and recovery if installation is interrupted.
+Releases are built and published by the GitHub Actions workflow `.github/workflows/release.yml`. It runs when a tag starting with `v` is pushed. Use a valid version tag (see [What the launcher does](#what-the-launcher-does)):
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+Commit and push the code first: the tag must point at a commit that contains the workflow and the changes you want to ship.
+
+The workflow has two jobs:
+
+1. **Build (once per OS, in parallel).** On GitHub-hosted Linux, Windows and macOS machines it checks out the repository, installs JDK 25, runs `./mvnw -Papp-image clean package` in `frontend/frontend`, zips the generated application image, computes the SHA-256 checksum of the finished ZIP, and uploads both files as workflow artifacts.
+2. **Release.** It runs only if all three builds succeeded. It downloads the six files and creates a GitHub Release for the tag with all of them attached. If any build fails, no release is created, so a partial release is never published.
+
+Each ZIP is laid out to match the paths in `OperatingSystem`, which the launcher resolves relative to the extracted install folder:
+
+| OS | ZIP name | ZIP root contains | Executable path used by the launcher | Tool |
+|---|---|---|---|---|
+| Linux | `bpchat-linux.zip` | contents of `target/dist/BP-Chat` (`bin/`, `lib/`) | `bin/BP-Chat` | `zip` |
+| Windows | `bpchat-windows.zip` | contents of `target/dist/BP-Chat` (`BP-Chat.exe`, `app/`, `runtime/`) | `BP-Chat.exe` | `7z` |
+| macOS | `bpchat-mac.zip` | `BP-Chat.app` | `BP-Chat.app/Contents/MacOS/BP-Chat` | `ditto` |
+
+The checksum is created after the ZIP, because any later change to the ZIP changes its hash. The macOS archive is created with `ditto` instead of `zip` so the application bundle's structure is preserved.
+
+#### Known limitations
+
+- The macOS build is made on GitHub's Apple Silicon runner, so it runs on Apple Silicon Macs only. The Linux build is for x86-64.
+- The Linux build is made on the runner's Ubuntu and bundles its own Java runtime. It needs a compatible C library on the user's system (the same or a newer version than the build machine's) and the GTK 3 libraries that JavaFX uses.
+- `Installer` extracts ZIPs with `ZipInputStream`, which does not restore file permissions or symbolic links, and `FrontendStarter` marks only the main executable as executable. Fresh install has been verified on Linux. Windows, macOS, and update-over-an-existing-install should be tested with a real release before being treated as reliable.
+- The packaged frontend contains `settings.properties`. A release built with `api.base.url` pointing at `localhost` only works on machines where the backend runs locally.
+
+Before relying on a release, test a first install and an update over an existing install on each supported OS. Also test interrupted downloads, a bad checksum, missing assets, and recovery if installation is interrupted.
 
 The launcher is only as reliable as the release asset structure and the atomicity/recovery behavior of the installer. Do not call an update workflow production-ready until it has been tested on each supported operating system with a real release.
 
@@ -860,7 +894,7 @@ cd frontend/frontend
 mvn clean package -Papp-image
 ```
 
-Inspect `target/dist/` and test the generated application image by launching it directly. Then ZIP the correct image contents under the layout expected by the launcher. The launcher expects platform ZIP names to match `LauncherConfig`. Do not assume that the raw Maven JAR alone is sufficient: the packaged app needs its runtime dependencies and JavaFX/native launch support.
+Inspect `target/dist/` and test the generated application image by launching it directly. Release packages are normally produced by the GitHub Actions workflow, which zips the image in the layout the launcher expects (see [Publishing a launcher-compatible release](#publishing-a-launcher-compatible-release)); the manual steps above are for local testing. The launcher expects platform ZIP names to match `LauncherConfig`. Do not assume that the raw Maven JAR alone is sufficient: the packaged app needs its runtime dependencies and JavaFX/native launch support.
 
 ---
 
@@ -1418,6 +1452,13 @@ sequenceDiagram
 - Check that embeddings exist and the database supports the vector mappings/queries used by the repository.
 - For summaries, inspect summary cache/quota records and lock-service availability.
 
+### Launcher says it could not reach the update server
+This message appears on a first install whenever the launcher gets no usable release, not only when the network is down. Open `https://api.github.com/repos/<owner>/<repo>/releases/latest` in a browser and check:
+- `tag_name` must be `vMAJOR.MINOR.PATCH`. A tag such as `v1.0.0-beta` or `v0.0.8-test` is rejected by `VersionComparator`.
+- `assets` must contain the ZIP and the `.sha256` file for the current OS.
+- The page must load at all; a "Not Found" means the repository name or visibility is wrong.
+- If the page is fine, check the machine's network access to `api.github.com`.
+
 ### Launcher reports missing release assets
 - Confirm a GitHub Release exists in the repository configured by `LauncherConfig`.
 - Confirm the ZIP names exactly match the expected Windows/Linux/macOS asset names.
@@ -1427,7 +1468,7 @@ sequenceDiagram
 
 ### Launcher checksum validation fails
 - Regenerate the checksum after the final ZIP has been created; any later modification changes the checksum.
-- Confirm checksum-file format matches `ChecksumUtil`.
+- Confirm the first whitespace-separated word of the `.sha256` file is the 64-character hexadecimal SHA-256 of the ZIP (parsed by `ReleaseClient`).
 - Do not bypass checksum validation just to make a release install. Investigate mismatched/corrupted assets instead.
 
 ### JavaFX UI freezes during network operations
