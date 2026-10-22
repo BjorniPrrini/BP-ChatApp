@@ -16,7 +16,9 @@ jobs:
             label: mac
           - runner: windows-latest
             label: windows
+
     runs-on: ${{ matrix.runner }}
+
     steps:
       - name: OS Label
         run: echo "${{ matrix.label }}"
@@ -34,3 +36,8 @@ jobs:
         working-directory: frontend/frontend
         shell: bash
         run: ./mvnw -Papp-image clean package
+
+      - name: Show what jpackage produced
+        working-directory: frontend/frontend
+        shell: bash
+        run: find target/dist -maxdepth 3
