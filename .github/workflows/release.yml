@@ -41,3 +41,21 @@ jobs:
         working-directory: frontend/frontend
         shell: bash
         run: find target/dist -maxdepth 3
+
+      - name: Zip - Linux
+        if: matrix.label == 'linux'
+        working-directory: frontend/frontend/target/dist/BP-Chat
+        shell: bash
+        run: zip -r ../../bpchat-linux.zip .
+
+      - name: Zip - Windows
+        if: matrix.label == 'windows'
+        working-directory: frontend/frontend/target/dist/BP-Chat
+        shell: bash
+        run: 7z a ../../bpchat-windows.zip .
+
+      - name: Zip - Mac
+        if: matrix.label == 'mac'
+        working-directory: frontend/frontend/target/dist
+        shell: bash
+        run: ditto -c -k --keepParent BP-Chat.app ../bpchat-mac.zip
