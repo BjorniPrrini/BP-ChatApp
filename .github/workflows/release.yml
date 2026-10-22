@@ -20,3 +20,12 @@ jobs:
     steps:
       - name: OS Label
         run: echo "${{ matrix.label }}"
+
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 25
+          distribution: temurin
