@@ -76,3 +76,11 @@ jobs:
         working-directory: frontend/frontend/target
         shell: bash
         run: ls -l bpchat-* && cat bpchat-*.sha256
+
+      - name: Save zip and checksum
+        uses: actions/upload-artifact@v5
+        with:
+          name: bpchat-${{ matrix.label }}
+          path: |
+            frontend/frontend/target/bpchat-${{ matrix.label }}.zip
+            frontend/frontend/target/bpchat-${{ matrix.label }}.zip.sha256
