@@ -16,13 +16,8 @@ jobs:
             label: mac
           - runner: windows-latest
             label: windows
-
     runs-on: ${{ matrix.runner }}
-
     steps:
-      - name: OS Label
-        run: echo "${{ matrix.label }}"
-
       - name: Get the code
         uses: actions/checkout@v5
 
@@ -37,24 +32,19 @@ jobs:
         shell: bash
         run: ./mvnw -Papp-image clean package
 
-      - name: Show what jpackage produced
-        working-directory: frontend/frontend
-        shell: bash
-        run: find target/dist -maxdepth 3
-
-      - name: Zip - Linux
+      - name: Zip frontend - Linux
         if: matrix.label == 'linux'
         working-directory: frontend/frontend/target/dist/BP-Chat
         shell: bash
         run: zip -r ../../bpchat-linux.zip .
 
-      - name: Zip - Windows
+      - name: Zip frontend - Windows
         if: matrix.label == 'windows'
         working-directory: frontend/frontend/target/dist/BP-Chat
         shell: bash
         run: 7z a ../../bpchat-windows.zip .
 
-      - name: Zip - Mac
+      - name: Zip frontend - Mac
         if: matrix.label == 'mac'
         working-directory: frontend/frontend/target/dist
         shell: bash
@@ -72,19 +62,44 @@ jobs:
         shell: bash
         run: shasum -a 256 bpchat-mac.zip > bpchat-mac.zip.sha256
 
-      - name: Show zips and checksums
-        working-directory: frontend/frontend/target
+      - name: Build the launcher
+        working-directory: launcher
         shell: bash
-        run: ls -l bpchat-* && cat bpchat-*.sha256
+        run: ./mvnw -Papp-image clean package
 
-      - name: Save zip and checksum
-        uses: actions/upload-artifact@v5
+      - name: Zip launcher - Linux
+        if: matrix.label == 'linux'
+        working-directory: launcher/target/dist
+        shell: bash
+        run: zip -r ../bpchat-launcher-linux.zip BP-Chat-Launcher
+
+      - name: Zip launcher - Windows
+        if: matrix.label == 'windows'
+        working-directory: launcher/target/dist
+        shell: bash
+        run: 7z a ../bpchat-launcher-windows.zip BP-Chat-Launcher
+
+      - name: Zip launcher - Mac
+        if: matrix.label == 'mac'
+        working-directory: launcher/target/dist
+        shell: bash
+        run: ditto -c -k --keepParent BP-Chat-Launcher.app ../bpchat-launcher-mac.zip
+
+      - name: Collect release files
+        shell: bash
+        run: |
+          mkdir release-files
+          cp frontend/frontend/target/bpchat-${{ matrix.label }}.zip release-files/
+          cp frontend/frontend/target/bpchat-${{ matrix.label }}.zip.sha256 release-files/
+          cp launcher/target/bpchat-launcher-${{ matrix.label }}.zip release-files/
+          ls -l release-files
+
+      - name: Save release files
+        uses: actions/upload-artifact@v6
         with:
           name: bpchat-${{ matrix.label }}
-          path: |
-            frontend/frontend/target/bpchat-${{ matrix.label }}.zip
-            frontend/frontend/target/bpchat-${{ matrix.label }}.zip.sha256
-            
+          path: release-files/*
+
   release:
     needs: build
     runs-on: ubuntu-latest
