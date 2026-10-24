@@ -19,15 +19,16 @@ This README documents the repository as it exists in source. Exact behavior is e
 5. [Initial setup](#initial-setup)
 6. [Backend configuration reference](#backend-configuration-reference)
 7. [Run and build](#run-and-build)
-8. [Launcher](#launcher)
-9. [Frontend](#frontend)
-10. [Backend internals](#backend-internals)
-11. [REST API reference](#rest-api-reference)
-12. [WebSocket/STOMP API](#websocketstomp-api)
-13. [Persistence model](#persistence-model)
-14. [End-to-end request flows](#end-to-end-request-flows)
-15. [Troubleshooting](#troubleshooting)
-16. [Security and deployment notes](#security-and-deployment-notes)
+8. [Installing as a tester](#installing-as-a-tester)
+9. [Launcher](#launcher)
+10. [Frontend](#frontend)
+11. [Backend internals](#backend-internals)
+12. [REST API reference](#rest-api-reference)
+13. [WebSocket/STOMP API](#websocketstomp-api)
+14. [Persistence model](#persistence-model)
+15. [End-to-end request flows](#end-to-end-request-flows)
+16. [Troubleshooting](#troubleshooting)
+17. [Security and deployment notes](#security-and-deployment-notes)
 
 ---
 
@@ -484,6 +485,15 @@ mvn javafx:run
 mvn clean package
 ```
 
+The released launcher is a packaged application image with its own Java runtime, built with the `app-image` Maven profile (the same approach as the frontend):
+
+```bash
+cd launcher
+./mvnw -Papp-image clean package
+```
+
+The result is in `launcher/target/dist/` (`BP-Chat-Launcher/` on Linux and Windows, `BP-Chat-Launcher.app` on macOS). Always test a packaged build, not only `javafx:run`: a packaged launcher runs in a different environment from one started by an IDE, and at least one startup problem only appeared in the packaged form.
+
 ### Running tests
 
 The POMs include JUnit dependencies and backend test starter dependencies, but dependency presence is not evidence that every feature has automated coverage. Run the commands above and inspect test reports under `target/surefire-reports/`. Treat a successful compile as compile verification, not proof that authentication, updater rollback, file upload, AI quota, and WebSocket behavior all work correctly.
@@ -491,6 +501,32 @@ The POMs include JUnit dependencies and backend test starter dependencies, but d
 The GitHub Actions release workflow builds only the frontend (`./mvnw -Papp-image clean package` in `frontend/frontend`). Maven runs any frontend tests during that build, so a failing test fails the build and no release is published. There is currently no separate workflow that runs tests on every push or pull request, and the backend and launcher are not built in CI.
 
 ---
+
+## Installing as a tester
+
+This section is for people who only want to run BP-Chat. Developers who build from source follow [Initial setup](#initial-setup) instead.
+
+**What you need first.** The packaged frontend connects to the backend address stored in its `settings.properties` (`localhost` by default), so the backend, PostgreSQL and Redis must be running on the same machine. Follow the backend steps in [Initial setup](#initial-setup) before starting the app.
+
+**Steps**
+
+1. Open the latest release on the project's GitHub **Releases** page and download only `bpchat-launcher-<os>.zip` for your operating system (`linux`, `windows` or `mac`). Ignore the other files and the automatic "Source code" archives: the launcher downloads the application itself.
+2. Unzip it anywhere, for example on the desktop.
+3. Start the launcher:
+   - Linux: `BP-Chat-Launcher/bin/BP-Chat-Launcher`
+   - Windows: `BP-Chat-Launcher/BP-Chat-Launcher.exe`
+   - macOS: `BP-Chat-Launcher.app`
+4. On the first start the launcher downloads and installs the application into `~/.bpchat/app` and then starts it. On later starts it checks for a newer release and updates automatically before opening the app.
+
+**Security warnings.** The packages are not code-signed, so the operating system may warn you:
+
+- **Windows:** SmartScreen may show "Windows protected your PC". Choose **More info**, then **Run anyway**.
+- **macOS:** Gatekeeper may refuse to open the app. Control-click (or right-click) it, choose **Open**, and confirm; or allow it under **System Settings → Privacy & Security**. The macOS build runs on Apple Silicon Macs only.
+- **Linux:** the GTK 3 libraries must be installed (standard on most desktop distributions). If an archive tool did not keep the executable permission, run `chmod +x BP-Chat-Launcher/bin/BP-Chat-Launcher`.
+
+**Where files go.** Everything the launcher and the app store is under `.bpchat` in your home folder (`~/.bpchat` on Linux and macOS, `C:\Users\<name>\.bpchat` on Windows): the installed application in `app/`, your theme and saved email history, and `frontend.log`. To uninstall, delete the launcher folder and the `.bpchat` folder.
+
+**If the app does not open,** the launcher shows a failure message. The application's own output is in `~/.bpchat/frontend.log` (overwritten on every start); send that file when reporting a problem. See also [Troubleshooting](#troubleshooting).
 
 # Launcher
 
@@ -502,11 +538,18 @@ The launcher is a standalone JavaFX application. It is intentionally separate fr
 - `bpchat-linux.zip` and `bpchat-linux.zip.sha256`
 - `bpchat-mac.zip` and `bpchat-mac.zip.sha256`
 
-Each platform has two assets: the ZIP, which contains the application itself (the frontend application image with its own Java runtime), and a small text file with the ZIP's SHA-256 checksum, which the launcher uses to detect a corrupted download before installing. The launcher only needs the pair for its own operating system and ignores the others, so a release contains six assets in total. A release with a ZIP but no matching checksum file is not installable.
+Each platform has two assets: the ZIP, which contains the application itself (the frontend application image with its own Java runtime), and a small text file with the ZIP's SHA-256 checksum, which the launcher uses to detect a corrupted download before installing. The launcher only needs the pair for its own operating system and ignores the others, so a release carries six update assets in total. It also carries three launcher downloads, `bpchat-launcher-linux.zip`, `bpchat-launcher-windows.zip` and `bpchat-launcher-mac.zip`, which are what a new user downloads first; the launcher itself never reads them, and they have no checksum file because the launcher cannot update itself. A release with a ZIP but no matching checksum file is not installable.
 
 The launcher reads the checksum file as text and uses only its first whitespace-separated word, which must be 64 hexadecimal characters. The standard `sha256sum` / `shasum -a 256` output (hash, then file name) is therefore accepted. `ChecksumUtil` computes the SHA-256 of the downloaded file, and the two values are compared before anything is installed.
 
 The release's tag must have the form `vMAJOR.MINOR.PATCH` (for example `v1.2.3`; the `v` is optional). `VersionComparator` rejects any other format, including suffixes such as `-beta` or `-test`, and the launcher then treats the release as unusable. Because the GitHub API's "latest release" is the newest published release, a release with an invalid tag stops new installs from finding a usable release until a valid one is published.
+
+When the launcher starts the installed frontend (`FrontendStarter`) it does four things beyond running the executable:
+
+- It writes everything the frontend prints, including errors, to `~/.bpchat/frontend.log`, which is overwritten on each start.
+- It removes JVM-configuration variables from the environment the frontend inherits (`JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `_JAVA_OPTIONS`, `CLASSPATH`, `JAVA_MAIN_CLASS_*`, and any name containing `JPACKAGE`). The frontend ships its own runtime, and when it was started from the packaged launcher without this cleanup it printed Java's usage text and exited immediately. The exact variable responsible was not isolated.
+- It marks the main executable as executable, because ZIP extraction does not preserve permissions.
+- It waits up to two seconds. If the frontend has already exited by then, the launcher shows a failure containing the exit code and the log path instead of closing silently.
 
 ## Launcher classes
 
@@ -524,7 +567,7 @@ The release's tag must have the form `vMAJOR.MINOR.PATCH` (for example `v1.2.3`;
 | `service.Downloader` | Downloads a release asset to a temporary/partial file. | Isolates transfer and progress behavior from installation. |
 | `service.Installer` | Unpacks/stages the downloaded frontend and coordinates replacement of the installed version. | Handles filesystem changes as a distinct operation. |
 | `service.InstallStore` | Manages the local installed-version/installation metadata used by launcher logic. | Keeps install-state persistence out of the controller. |
-| `service.FrontendStarter` | Starts the installed frontend process. | Separates process startup and OS-specific invocation from update logic. |
+| `service.FrontendStarter` | Starts the installed frontend process, logs its output to `~/.bpchat/frontend.log`, strips inherited JVM settings from its environment, and reports a crash within the first two seconds. | Separates process startup and OS-specific invocation from update logic. |
 | `util.ChecksumUtil` | Calculates/checks SHA-256 checksums. | Detects corrupted or mismatched downloaded packages before installation. |
 | `util.PlatformUtil` | Detects the host operating system and platform-specific details. | Avoids scattering OS detection throughout the update pipeline. |
 | `util.VersionComparator` | Compares current and remote release versions. | Makes update/no-update decisions consistent. |
@@ -598,8 +641,8 @@ Commit and push the code first: the tag must point at a commit that contains the
 
 The workflow has two jobs:
 
-1. **Build (once per OS, in parallel).** On GitHub-hosted Linux, Windows and macOS machines it checks out the repository, installs JDK 25, runs `./mvnw -Papp-image clean package` in `frontend/frontend`, zips the generated application image, computes the SHA-256 checksum of the finished ZIP, and uploads both files as workflow artifacts.
-2. **Release.** It runs only if all three builds succeeded. It downloads the six files and creates a GitHub Release for the tag with all of them attached. If any build fails, no release is created, so a partial release is never published.
+1. **Build (once per OS, in parallel).** On GitHub-hosted Linux, Windows and macOS machines it checks out the repository, installs JDK 25, runs `./mvnw -Papp-image clean package` in `frontend/frontend`, zips the generated application image, and computes the SHA-256 checksum of the finished ZIP. It then does the same packaging for the launcher (`./mvnw -Papp-image clean package` in `launcher`, zipped as `bpchat-launcher-<os>.zip`). The three files for that OS are copied into one flat folder and uploaded together as a workflow artifact.
+2. **Release.** It runs only if all three builds succeeded. It downloads the nine files (three per OS) and creates a GitHub Release for the tag with all of them attached. If any build fails, no release is created, so a partial release is never published.
 
 Each ZIP is laid out to match the paths in `OperatingSystem`, which the launcher resolves relative to the extracted install folder:
 
@@ -611,11 +654,23 @@ Each ZIP is laid out to match the paths in `OperatingSystem`, which the launcher
 
 The checksum is created after the ZIP, because any later change to the ZIP changes its hash. The macOS archive is created with `ditto` instead of `zip` so the application bundle's structure is preserved.
 
+The launcher ZIPs are for people to unzip by hand, so unlike the update ZIPs they keep their top-level folder:
+
+| OS | ZIP name | ZIP root contains | Tool |
+|---|---|---|---|
+| Linux | `bpchat-launcher-linux.zip` | the folder `BP-Chat-Launcher` (`bin/`, `lib/`) | `zip` |
+| Windows | `bpchat-launcher-windows.zip` | the folder `BP-Chat-Launcher` (`BP-Chat-Launcher.exe`, `app/`, `runtime/`) | `7z` |
+| macOS | `bpchat-launcher-mac.zip` | `BP-Chat-Launcher.app` | `ditto` |
+
+The upload step collects the three files into a single folder first. If files from different folders were uploaded directly, the artifact would keep the folder structure and the release step would try to attach folders instead of files.
+
 #### Known limitations
 
 - The macOS build is made on GitHub's Apple Silicon runner, so it runs on Apple Silicon Macs only. The Linux build is for x86-64.
+- Neither the launcher nor the frontend is code-signed or notarized, so Windows SmartScreen and macOS Gatekeeper warn on first start.
+- The launcher does not update itself. A change to the launcher reaches users only when they download a new launcher ZIP.
 - The Linux build is made on the runner's Ubuntu and bundles its own Java runtime. It needs a compatible C library on the user's system (the same or a newer version than the build machine's) and the GTK 3 libraries that JavaFX uses.
-- `Installer` extracts ZIPs with `ZipInputStream`, which does not restore file permissions or symbolic links, and `FrontendStarter` marks only the main executable as executable. Fresh install has been verified on Linux. Windows, macOS, and update-over-an-existing-install should be tested with a real release before being treated as reliable.
+- `Installer` extracts ZIPs with `ZipInputStream`, which does not restore file permissions or symbolic links, and `FrontendStarter` marks only the main executable as executable. A fresh install through the packaged launcher has been verified on Linux. Windows, macOS, and update-over-an-existing-install should be tested with a real release before being treated as reliable.
 - The packaged frontend contains `settings.properties`. A release built with `api.base.url` pointing at `localhost` only works on machines where the backend runs locally.
 
 Before relying on a release, test a first install and an update over an existing install on each supported OS. Also test interrupted downloads, a bad checksum, missing assets, and recovery if installation is interrupted.
@@ -1405,7 +1460,6 @@ sequenceDiagram
 5. Provider availability, valid AI credentials, quota state, and access to the conversation affect whether the request succeeds.
 
 ---
-
 ## Troubleshooting
 
 ### Backend fails during startup with a datasource error
@@ -1458,6 +1512,13 @@ This message appears on a first install whenever the launcher gets no usable rel
 - `assets` must contain the ZIP and the `.sha256` file for the current OS.
 - The page must load at all; a "Not Found" means the repository name or visibility is wrong.
 - If the page is fine, check the machine's network access to `api.github.com`.
+
+### The app is installed but BP-Chat does not open
+The launcher shows a failure message with an exit code and the path of the log when the frontend exits within two seconds of starting. Otherwise it closes normally.
+- Open `~/.bpchat/frontend.log` (it holds the output of the latest start only). JavaFX warnings about an "unnamed module", "restricted method" or `sun.misc.Unsafe` are normal on this setup and are not errors.
+- Start the installed executable directly from a terminal to see the same output live: `~/.bpchat/app/frontend/bin/BP-Chat` on Linux, `BP-Chat.exe` in the same folder on Windows, and `BP-Chat.app/Contents/MacOS/BP-Chat` on macOS.
+- If the log contains Java's usage text (a list of `java` options) and nothing else, the frontend was started with leftover JVM settings from its parent's environment. The launcher removes the known ones; report the case with the environment variable names you see.
+- If the launcher itself does not open on macOS or Windows, see the security warnings in [Installing as a tester](#installing-as-a-tester).
 
 ### Launcher reports missing release assets
 - Confirm a GitHub Release exists in the repository configured by `LauncherConfig`.
