@@ -179,6 +179,15 @@ public class MessageEventManager {
         }
     }
 
+    public void addMessageIfAbsent(MessageResponseDTO message){
+        boolean alreadyShown = messagesContainer.getChildren().stream()
+                .anyMatch(node -> message.getId().equals(node.getProperties().get("messageId")));
+
+        if(!alreadyShown){
+            messagesContainer.getChildren().add(messageBubbleFactory.createMessageBubble(message, currentConversationIsGroup));
+        }
+    }
+
     private int statusRank(String status){
         return switch (status) {
             case "sent" -> 1;

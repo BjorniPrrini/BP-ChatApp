@@ -8,6 +8,7 @@ import com.chatappfrontend.frontend.model.ui.SearchResultItem;
 import com.chatappfrontend.frontend.service.*;
 import com.chatappfrontend.frontend.util.*;
 
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -84,6 +85,7 @@ public class ChatPageController {
     private MessagePaginationManager messagePaginationManager;
     private MessageSearchManager messageSearchManager;
     private boolean currentConversationIsGroup;
+    private boolean sending = false;
     private final MessageService messageService = new MessageService();
 
     @FXML
@@ -355,6 +357,10 @@ public class ChatPageController {
 
     @FXML
     public void handleSendMessage(){
+        if(sending){
+            return;
+        }
+
         String message = messageInput.getText().trim();
 
         if(message.isEmpty()){
@@ -369,27 +375,46 @@ public class ChatPageController {
             return;
         }
 
-        try {
-            MessageResponseDTO sent;
+        final Long conversationId = currentConversationId;
+        final Long replyToId = replyingTo != null ? replyingTo.getId() : null;
 
-            if(replyingTo != null){
-                sent = messageService.replyMessage(currentConversationId, replyingTo.getId(), message);
-            }else{
-                sent = messageService.sendMessage(currentConversationId, message);
+        sending = true;
+        messageInput.clear();
+        cancelReply();
+
+        Task<MessageResponseDTO> task = new Task<>() {
+            @Override
+            protected MessageResponseDTO call() throws Exception {
+                if(replyToId != null){
+                    return messageService.replyMessage(conversationId, replyToId, message);
+                }
+
+                return messageService.sendMessage(conversationId, message);
+            }
+        };
+
+        task.setOnSucceeded(_ -> {
+            sending = false;
+            MessageResponseDTO sent = task.getValue();
+
+            conversationListManager.updateConversationPreview(conversationId, sent.getMessage(), sent.getSentAt());
+
+            if(conversationId.equals(currentConversationId)){
+                messageEventManager.addMessageIfAbsent(sent);
+            }
+        });
+
+        task.setOnFailed(_ -> {
+            sending = false;
+
+            if(messageInput.getText().isEmpty()){
+                messageInput.setText(message);
             }
 
-            HBox bubble = messageBubbleFactory.createMessageBubble(sent, currentConversationIsGroup);
-
-            messagesContainer.getChildren().add(bubble);
-
-            conversationListManager.updateConversationPreview(currentConversationId, sent.getMessage(), sent.getSentAt());
-
-            messageInput.clear();
-
-            cancelReply();
-        } catch (Exception _){
             AlertUtils.showError(notificationLabel, "Couldn't send message");
-        }
+        });
+
+        AppExecutor.run(task);
     }
 
     private void clearChatPane(){

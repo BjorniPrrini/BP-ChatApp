@@ -6,13 +6,11 @@ import com.chatappbackend.backend.dto.message.MessageRequestDTO;
 import com.chatappbackend.backend.dto.message.MessageResponseDTO;
 import com.chatappbackend.backend.entity.*;
 import com.chatappbackend.backend.exception.BadRequestException;
-import com.chatappbackend.backend.exception.EmbeddingException;
 import com.chatappbackend.backend.exception.ForbiddenException;
 import com.chatappbackend.backend.exception.ResourceNotFoundException;
 import com.chatappbackend.backend.mapper.MessageMapper;
 import com.chatappbackend.backend.repository.*;
 import com.chatappbackend.backend.service.blocked.BlockedUserService;
-import com.chatappbackend.backend.service.embedding.EmbeddingService;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
@@ -37,10 +35,9 @@ public class MessageServiceImpl implements MessageService{
     private final MessageMapper messageMapper;
     private final MessageDeliveryRepository messageDeliveryRepository;
     private final MessageReadRepository messageReadRepository;
-    private final EmbeddingService embeddingService;
-    private final MessageEmbeddingRepository messageEmbeddingRepository;
+    private final MessageEmbeddingWriter messageEmbeddingWriter;
 
-    public MessageServiceImpl(UserRepository userRepository, ConversationRepository conversationRepository, MessageRepository messageRepository, MessageDeleteRepository messageDeleteRepository, ConversationParticipantRepository conversationParticipantRepository, BlockedUserService blockedUserService, FriendRequestRepository friendRequestRepository, SimpMessagingTemplate messagingTemplate, MessageMapper messageMapper, MessageDeliveryRepository messageDeliveryRepository, MessageReadRepository messageReadRepository, EmbeddingService embeddingService, MessageEmbeddingRepository messageEmbeddingRepository){
+    public MessageServiceImpl(UserRepository userRepository, ConversationRepository conversationRepository, MessageRepository messageRepository, MessageDeleteRepository messageDeleteRepository, ConversationParticipantRepository conversationParticipantRepository, BlockedUserService blockedUserService, FriendRequestRepository friendRequestRepository, SimpMessagingTemplate messagingTemplate, MessageMapper messageMapper, MessageDeliveryRepository messageDeliveryRepository, MessageReadRepository messageReadRepository, MessageEmbeddingWriter messageEmbeddingWriter){
         this.userRepository = userRepository;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
@@ -52,8 +49,7 @@ public class MessageServiceImpl implements MessageService{
         this.messageMapper = messageMapper;
         this.messageDeliveryRepository = messageDeliveryRepository;
         this.messageReadRepository = messageReadRepository;
-        this.embeddingService = embeddingService;
-        this.messageEmbeddingRepository = messageEmbeddingRepository;
+        this.messageEmbeddingWriter = messageEmbeddingWriter;
     }
 
     @Override
@@ -113,18 +109,7 @@ public class MessageServiceImpl implements MessageService{
 
         otherUserList.forEach(otherUser -> messagingTemplate.convertAndSend("/queue/user." + otherUser.getId(), new MessageEventDTO("NEW", conversation.getId(), dto.getId(), dto, null, null)));
 
-        try {
-            float[] embedding = embeddingService.messageToVector(savedMessage.getMessage());
-
-            MessageEmbedding messageEmbedding = new MessageEmbedding();
-
-            messageEmbedding.setMessage(savedMessage);
-            messageEmbedding.setEmbedding(embedding);
-
-            messageEmbeddingRepository.save(messageEmbedding);
-        } catch (EmbeddingException _) {
-
-        }
+        messageEmbeddingWriter.embedMessage(savedMessage.getId());
 
         return dto;
     }

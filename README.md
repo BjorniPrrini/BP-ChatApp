@@ -22,7 +22,7 @@ This README documents the repository as it exists in source. Exact behavior is e
 8. [Installing as a tester](#installing-as-a-tester)
 9. [Launcher](#launcher)
 10. [Frontend](#frontend)
-11. [Backend internals](#backend-internals)
+11. [Backend internals](#backend)
 12. [REST API reference](#rest-api-reference)
 13. [WebSocket/STOMP API](#websocketstomp-api)
 14. [Persistence model](#persistence-model)
@@ -65,7 +65,7 @@ The Mermaid source is kept in this README so diagrams remain editable as text an
 - Semantic message search backed by message embeddings and an external embedding provider.
 - Conversation summaries backed by a generative AI client.
 - Summary persistence and per-user summary quota tracking.
-- Background embedding sweep/scheduling support.
+- Message embeddings are generated asynchronously after a message is sent. A scheduled sweep also processes messages that still lack embeddings, covering older messages and work that did not complete in the background.
 
 ### Desktop experience
 - JavaFX UI built from FXML and CSS.
@@ -696,7 +696,7 @@ The frontend is a JavaFX desktop application. FXML defines view structure, CSS d
 | `controller.LoginController` | Login screen interaction and authentication handoff. |
 | `controller.RegistrationController` | Registration form and registration request. |
 | `controller.ForgotPasswordController` | Requests a password-reset email. |
-| `controller.ChatPageController` | Main chat page, selected conversation, message area, and coordination of chat UI managers. |
+| `controller.ChatPageController` | Coordinates the main chat screen, selected conversation, message area, and chat UI managers. Message submission is handled asynchronously so network calls do not block JavaFX interaction; see [Sending a message from the UI](#sending-a-message-from-the-ui). |
 | `controller.StartChatPopupController` | Starts a direct conversation from a selected friend. |
 | `controller.GroupInfoController` | Displays and edits group details and membership actions. |
 | `controller.AddParticipantsController` | Adds eligible friends to an existing group. |
@@ -733,7 +733,7 @@ The frontend is a JavaFX desktop application. FXML defines view structure, CSS d
 | `manager.MessageActionManager` | Coordinates message actions (edit/delete). |
 | `manager.MessagePaginationManager` | Loads earlier message pages and coordinates message-history pagination. |
 | `manager.MessageSearchManager` | Coordinates search UI/results and navigation to a matching message/conversation. |
-| `manager.MessageEventManager` | Handles incoming message/status events and updates visible state. |
+| `manager.MessageEventManager` | Applies incoming message, delivery/read-status, edit, delete, and presence events to the visible chat. It also centralizes message-bubble insertion and checks message IDs to prevent a REST response and a WebSocket event from displaying the same message twice. |
 | `manager.PanelManager` | Coordinates opening/closing secondary panels. |
 | `factory.MessageBubbleFactory` | Builds message-bubble nodes from message data and current visual/theme rules. |
 | `cell.ConversationCell` | Renders one conversation in the list. |
@@ -925,6 +925,18 @@ This is a responsibility/dependency view, not a guarantee that every listed clas
 - Do not run network requests synchronously on the JavaFX Application Thread. Use the app's executor/manager pattern and marshal UI updates back to the JavaFX thread.
 - A frontend model/DTO is a client-side representation, not the source of authorization. The backend must verify ownership and membership for every protected operation.
 
+## Sending a message from the UI
+
+`ChatPageController.handleSendMessage` keeps the network call off the JavaFX Application Thread:
+
+1. On the JavaFX thread it validates the input, then captures the message text, the open conversation ID, and the reply target in local variables, so switching conversations while a send is in flight cannot change what is sent.
+2. It clears the input box and the reply state immediately.
+3. A `Task` on `AppExecutor` calls `MessageService.sendMessage` or `replyMessage`. A `sending` flag makes the handler ignore another Enter while a send is in flight, which also keeps messages in the order they were typed.
+4. On success (back on the JavaFX thread) the conversation-list preview is always updated, and the bubble is added only if the same conversation is still open, through `MessageEventManager.addMessageIfAbsent`.
+5. On failure the exception is logged and an error is shown. The text is put back into the input box only if the box is still empty, so a newer draft is never overwritten.
+
+**Duplicate protection.** The backend broadcasts a new message over WebSocket before the REST response reaches the sender, so the sender's own client can receive the `NEW` event first. Both paths therefore add bubbles through `addMessageIfAbsent`, which checks the displayed bubbles for the message ID (the `messageId` node property) before adding. The result is the same whichever arrives first.
+
 ## Frontend REST call catalogue
 
 The exact endpoint table appears in [REST API reference](#rest-api-reference). The frontend's primary service-to-resource mapping is:
@@ -967,7 +979,7 @@ The backend is a Spring Boot application using Spring MVC, Spring Security, Spri
 | `service.auth` | Login, registration, forgot-password, reset-password logic. |
 | `service.user` | User profile, status, picture and password operations. |
 | `service.conversation` | Direct/group conversation and participant rules. |
-| `service.message` | Message creation, pagination, edit/delete, read and delivery state. |
+| `service.message` | Message creation and lifecycle, history pagination, edit/delete operations, delivery/read state, and asynchronous embedding of newly sent messages. |
 | `service.friend` | Friend requests, accepted friends, suggestions and removal. |
 | `service.blocked` | Blocking/unblocking behavior. |
 | `service.notification` | Notification persistence and read state. |
@@ -1004,12 +1016,13 @@ The backend is a Spring Boot application using Spring MVC, Spring Security, Spri
 | `AuthService` / `AuthServiceImpl` | Authentication and account recovery workflow. |
 | `UserService` / `UserServiceImpl` | Profile operations, online status, picture and password operations. |
 | `ConversationService` / `ConversationServiceImpl` | Direct/group creation and conversation membership/metadata rules. |
-| `MessageService` / `MessageServiceImpl` | Message persistence and lifecycle operations, paging, editing/deleting, read/delivery state. |
+| `MessageService` / `MessageServiceImpl` | Validates conversation access, persists and broadcasts messages, and manages history, edits, deletions, and delivery/read state. After saving a new message, `sendMessage` submits its ID for background embedding and returns without waiting for the embedding provider. |
 | `FriendRequestService` / `FriendRequestServiceImpl` | Friend-request state transitions and friend relationships. |
 | `BlockedUserService` / `BlockedUserServiceImpl` | Blocked-user state and related queries. |
 | `NotificationService` / `NotificationServiceImpl` | Notification creation, retrieval, and read updates. |
 | `EmbeddingService` / `EmbeddingServiceImpl` | Embedding provider interaction and semantic search persistence/querying. |
-| `EmbeddingSweepService` | Scheduled/background embedding work. |
+| `EmbeddingSweepService` | Runs an initial scheduled sweep and repeats hourly, finding messages without embedding rows and attempting to create their embeddings. This provides a backfill for older messages and a recovery path for background tasks that were discarded or failed. |
+| `MessageEmbeddingWriter` (package `service.message`) | Creates embeddings for newly sent messages on the `embeddingExecutor` thread pool. It accepts a message ID, reloads the message in its own transaction, requests the embedding, and persists the result. Provider failures are logged as warnings and unexpected failures as errors rather than being returned to the send request. |
 | `SummaryService` / `SummaryServiceImpl` | Conversation-summary caching, quota, message selection, and AI client orchestration. |
 | `GeminiSummaryClient` | Calls the configured Gemini-style summary provider. |
 | `LockService` / `RedisLockService` | Lock abstraction and Redis-backed lock behavior. |
@@ -1026,7 +1039,7 @@ The backend is a Spring Boot application using Spring MVC, Spring Security, Spri
 | `WebMvcConfig` | MVC-related configuration such as resource/CORS behavior where configured. |
 | `MailConfig` | Mail sender/configuration integration. |
 | `GeminiConfig` | AI client/provider configuration. |
-| `SchedulingConfig` | Scheduled task configuration. |
+| `SchedulingConfig` | Enables scheduled and asynchronous execution and configures the `embeddingExecutor` pool used for message embeddings, with two core threads, up to four threads, a queue capacity of 200, and a discard policy when saturated. |
 
 #### Repositories
 
@@ -1170,6 +1183,24 @@ The diagram is intentionally focused on the main dependencies. It omits many sec
 
 ---
 
+## Asynchronous embedding of new messages
+
+Semantic search relies on stored message embeddings, but generating one requires a separate call to the embedding provider. To keep that work out of the send request, `MessageServiceImpl.sendMessage` persists and broadcasts the message first, then schedules embedding creation independently:
+
+1. The service saves the message and publishes the `NEW` events to the conversation topic and the other participants' queues.
+2. It passes the saved message ID to `MessageEmbeddingWriter.embedMessage` and returns the `MessageResponseDTO` without waiting for the external provider.
+3. The writer runs on the `embeddingExecutor` pool. In its own transaction, it reloads the message, exits if the message no longer exists, requests the vector through `EmbeddingService`, and stores a `MessageEmbedding`.
+
+Design points:
+
+- **Separate bean.** `@Async` works through a Spring proxy, so the async method must be called on a different bean. A call from inside the same class would run synchronously. This is why the logic lives in `MessageEmbeddingWriter` and not in `MessageServiceImpl`.
+- **ID instead of entity.** The method receives the message ID and reloads the message inside its own transaction, so the entity is attached when the `MessageEmbedding` row is saved. The entity held by `sendMessage` is detached by then because that method is not transactional.
+- **Bounded executor.** `embeddingExecutor` (defined in `SchedulingConfig`) uses 2 core threads, up to 4, and a queue of 200. When the queue is full, additional tasks are discarded instead of throwing, so a burst of messages cannot make a send fail after the message was already saved and broadcast. Discarded tasks are picked up by the sweep.
+- **Send requests are isolated from embedding failures.** The asynchronous writer catches provider exceptions and logs a warning; unexpected exceptions are logged with a stack trace. The REST send response does not wait for the writer to finish.
+- **Sweep as safety net.** `EmbeddingSweepService` searches for messages without an embedding on its scheduled run, starting at application startup and repeating hourly. A sweep can overlap with an in-flight writer for the same message; the embedding table's message key prevents two rows for one message. The sweep catches provider `EmbeddingException`s and continues, while unexpected persistence/runtime errors may still interrupt that sweep. Queued async work is lost on process shutdown, so the next sweep is the recovery mechanism.
+
+---
+
 ## REST API reference
 
 **Base URL:** `http://localhost:8080` by default. REST paths below include `/api`. Use `Content-Type: application/json` for JSON request bodies and `Authorization: Bearer <JWT>` for authenticated requests. Multipart uploads use `multipart/form-data`.
@@ -1220,7 +1251,7 @@ The controllers generally obtain the current `User` from Spring Security. The AP
 
 | Method | Endpoint | Input | Returns | Authentication | Description |
 |---|---|---|---|---|---|
-| `POST` | `/api/message/sendMessage` | JSON `MessageRequestDTO` (conversation ID and message content fields supported by DTO) | `MessageResponseDTO` | Required | Persists a message for the authenticated sender. This REST path exists alongside the WebSocket send path. |
+| `POST` | `/api/message/sendMessage` | JSON `MessageRequestDTO` (conversation ID and message content fields supported by DTO) | `MessageResponseDTO` | Required | Persists and broadcasts a message for the authenticated sender, then schedules its semantic-search embedding independently. This REST route exists alongside the WebSocket send path. |
 | `GET` | `/api/message/{conversationId}` | Path `conversationId`; optional ISO local datetime query `before` | `MessagePageDTO` | Required | Returns a page of messages before the supplied timestamp. If `before` is omitted, the controller uses server `LocalDateTime.now()`. |
 | `DELETE` | `/api/message/{messageId}/me` | Path `messageId` | Empty body, HTTP 200 on success | Required | Hides/deletes the message for the current user only, using per-user deletion state. |
 | `DELETE` | `/api/message/{messageId}/everyone` | Path `messageId` | Empty body, HTTP 200 on success | Required | Deletes the message for everyone when allowed by the service's ownership/rules. |
@@ -1439,8 +1470,8 @@ sequenceDiagram
 ### Message send and delivery/read tracking
 
 1. The client submits a `MessageRequestDTO` using REST (`POST /api/message/sendMessage`) or STOMP (`/chat.send` via the configured application prefix).
-2. The backend checks conversation access, persists the message, and returns/broadcasts `MessageResponseDTO`.
-3. STOMP broadcasts new messages to conversation subscribers.
+2. The backend checks conversation access, persists the message, broadcasts it, and schedules embedding creation without waiting for the external provider.
+3. STOMP delivers new-message events to conversation subscribers. The sender may receive its own event before the REST response arrives, so the frontend uses message IDs to avoid rendering the same bubble twice.
 4. The recipient's client can send delivery/read destinations; the backend persists state through message/read/delivery repositories.
 5. Notification records can be created for recipients and retrieved through `/api/notification/notifications`.
 
@@ -1504,6 +1535,7 @@ sequenceDiagram
 - Confirm the AI API key is present in the runtime configuration and is for the provider expected by `GeminiConfig`/the relevant client.
 - Verify provider quota, API access, model availability, and network access.
 - Check that embeddings exist and the database supports the vector mappings/queries used by the repository.
+- Newly sent messages are embedded in the background, so a message may take a short time to become searchable. If an embedding is missing, check backend logs for `Embedding failed for message` or `Unexpected error embedding message`; the scheduled sweep retries messages that still have no embedding row.
 - For summaries, inspect summary cache/quota records and lock-service availability.
 
 ### Launcher says it could not reach the update server
@@ -1536,6 +1568,7 @@ The launcher shows a failure message with an exit code and the path of the log w
 - Avoid performing HTTP, file I/O, AI waits, or large image decoding on the JavaFX Application Thread.
 - Use the existing executor/manager patterns and update JavaFX controls on the JavaFX thread.
 - Inspect `AppExecutor`, `ImageCache`, and the relevant manager/controller before adding new asynchronous work.
+- Message submission is an example of keeping network work off the JavaFX thread; see [Sending a message from the UI](#sending-a-message-from-the-ui). A responsive UI does not necessarily mean the backend has completed every follow-up task, such as embedding generation.
 
 ---
 
@@ -1682,6 +1715,7 @@ flowchart TB
       NS[NotificationServiceImpl]
       ES[EmbeddingServiceImpl]
       SS[SummaryServiceImpl]
+      MEW[MessageEmbeddingWriter]
       GSC[GeminiSummaryClient]
       LOCK[RedisLockService]
       UR[UserRepository]
@@ -1722,6 +1756,10 @@ flowchart TB
       SS --> UQR
       SS --> GSC
       SS --> LOCK
+      MS --> MEW
+      MEW --> ES
+      MEW --> MER
+      MEW --> MR
       %% Layout-only links encourage compact vertical stacks within backend layers.
       AC ~~~ UC
       UC ~~~ CC
