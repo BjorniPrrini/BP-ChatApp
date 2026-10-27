@@ -22,13 +22,13 @@
 
             <Region HBox.hgrow="ALWAYS"/>
 
-            <Button fx:id="closeSummaryButton" text="✕" styleClass="icon-button" onAction="#handleClose"/>
+            <Button text="✕" styleClass="icon-button" onAction="#handleClose"/>
         </HBox>
     </top>
 
     <center>
-        <StackPane fx:id="summaryContent" styleClass="summary-content">
-            <ProgressIndicator fx:id="summaryLoadingIndicator" visible="true" managed="true" prefWidth="45" prefHeight="45"/>
+        <StackPane styleClass="summary-content">
+            <ProgressIndicator fx:id="summaryLoadingIndicator" prefWidth="45" prefHeight="45"/>
 
             <ScrollPane fx:id="summaryScrollPane" visible="false" managed="false" fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" styleClass="summary-scroll">
                 <Label fx:id="summaryLabel" wrapText="true" styleClass="summary-text">

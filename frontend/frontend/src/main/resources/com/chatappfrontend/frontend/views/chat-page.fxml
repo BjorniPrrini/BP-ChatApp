@@ -5,22 +5,22 @@
 <?import javafx.geometry.Insets?>
 
 <StackPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.chatappfrontend.frontend.controller.ChatPageController" stylesheets="@../styles/main.css">
-    <Pane fx:id="backgroundPane" styleClass="chat-background"/>
+    <Pane styleClass="chat-background"/>
 
     <HBox>
         <VBox styleClass="icon-bar" prefWidth="60" alignment="TOP_CENTER" spacing="10">
             <padding><Insets top="20" bottom="20"/></padding>
 
-            <Button fx:id="chatsIconButton" text="💬" styleClass="icon-button" onAction="#showConversations"/>
-            <Button fx:id="settingsIconButton" text="⚙️" styleClass="icon-button" onAction="#showSettings"/>
-            <Button fx:id="friendsIconButton" text="👥" styleClass="icon-button" onAction="#showFriends"/>
+            <Button text="💬" styleClass="icon-button" onAction="#showConversations"/>
+            <Button text="⚙️" styleClass="icon-button" onAction="#showSettings"/>
+            <Button text="👥" styleClass="icon-button" onAction="#showFriends"/>
 
             <Region VBox.vgrow="ALWAYS"/>
 
             <Button text="⏻" styleClass="logout-button" onAction="#handleLogout"/>
         </VBox>
 
-        <VBox fx:id="fixedPanel" styleClass="fixed-panel" prefWidth="400">
+        <VBox styleClass="fixed-panel" prefWidth="400">
             <VBox fx:id="conversationsPanel" VBox.vgrow="ALWAYS">
                 <padding><Insets top="15" left="10" right="10" bottom="10"/></padding>
 
@@ -29,7 +29,7 @@
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <TextField fx:id="searchField" promptText="Search users or message..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
 
-                    <Button fx:id="createConversationButton" styleClass="fab-button" text="+" onAction="#handleOpenStartChatPopup"/>
+                    <Button styleClass="fab-button" text="+" onAction="#handleOpenStartChatPopup"/>
                 </HBox>
 
                 <ListView fx:id="conversationList" VBox.vgrow="ALWAYS" styleClass="conversation-list"/>
@@ -63,7 +63,7 @@
 
         <StackPane fx:id="contentPane" HBox.hgrow="ALWAYS">
             <VBox fx:id="chatArea" styleClass="chat-area">
-                <HBox fx:id="chatHeader" styleClass="chat-header" alignment="CENTER_LEFT" spacing="10">
+                <HBox styleClass="chat-header" alignment="CENTER_LEFT" spacing="10">
                     <padding>
                         <Insets top="10" bottom="10" left="15" right="15"/>
                     </padding>
@@ -79,7 +79,7 @@
 
                 <Label fx:id="notificationLabel" styleClass="notification-label" visible="false" managed="false"/>
 
-                <HBox fx:id="conversationContent" VBox.vgrow="ALWAYS">
+                <HBox VBox.vgrow="ALWAYS">
                     <ScrollPane fx:id="messagesScrollPane" HBox.hgrow="ALWAYS" fitToWidth="true" styleClass="messages-scroll">
                         <VBox fx:id="messagesContainer" styleClass="messages-container" spacing="8">
                             <padding>
@@ -93,7 +93,7 @@
 
                 <VBox fx:id="replyPreviewBox" visible="false" managed="false"/>
 
-                <HBox fx:id="messageInputArea" styleClass="message-input-area" alignment="CENTER" spacing="10">
+                <HBox styleClass="message-input-area" alignment="CENTER" spacing="10">
                     <padding>
                         <Insets top="10" bottom="10" left="15" right="15"/>
                     </padding>

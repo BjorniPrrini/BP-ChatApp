@@ -40,5 +40,5 @@
         <Button text="Apply" styleClass="primary-button" onAction="#handleSave" HBox.hgrow="ALWAYS"/>
     </HBox>
 
-    <Label fx:id="errorLabel" visible="false" managed="false" styleClass="error-label"/>
+    <Label visible="false" managed="false" styleClass="error-label"/>
 </VBox>

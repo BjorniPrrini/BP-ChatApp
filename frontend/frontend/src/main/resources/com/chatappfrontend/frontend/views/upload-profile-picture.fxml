@@ -11,11 +11,11 @@
 
     <Label text="Profile Picture" styleClass="panel-title"/>
 
-    <Label fx:id="profilePictureView" styleClass="avatar-label" minWidth="300" minHeight="300" maxWidth="500" maxHeight="500" alignment="CENTER"/>
+    <Label fx:id="profilePictureView"  minWidth="300" minHeight="300" maxWidth="500" maxHeight="500" alignment="CENTER"/>
 
     <Button fx:id="changePictureButton" text="Choose Picture" styleClass="settings-button" onAction="#handleChangePicture"/>
 
-    <Button fx:id="uploadButton" text="Upload" styleClass="primary-button" onAction="#handleUpload"/>
+    <Button text="Upload" styleClass="primary-button" onAction="#handleUpload"/>
 
     <Label fx:id="errorLabel" visible="false" managed="false" styleClass="error-label"/>
 </VBox>

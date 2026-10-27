@@ -10,8 +10,8 @@
     <VBox fx:id="choiceView" spacing="12" VBox.vgrow="ALWAYS">
         <Label text="Start something new" styleClass="panel-title"/>
 
-        <Button fx:id="newChatButton" text="New Chat" styleClass="primary-button" onAction="#showSingleSelectView" maxWidth="Infinity"/>
-        <Button fx:id="newGroupButton" text="New Group" styleClass="primary-button" onAction="#showMultiSelectView" maxWidth="Infinity"/>
+        <Button text="New Chat" styleClass="primary-button" onAction="#showSingleSelectView" maxWidth="Infinity"/>
+        <Button text="New Group" styleClass="primary-button" onAction="#showMultiSelectView" maxWidth="Infinity"/>
     </VBox>
 
     <VBox fx:id="singleSelectView" spacing="10" visible="false" managed="false" VBox.vgrow="ALWAYS">
@@ -49,10 +49,8 @@
 
         <TextField fx:id="groupNameField" promptText="Group name..." styleClass="search-field"/>
 
-        <Button fx:id="uploadGroupPictureButton" text="Upload Group Picture" styleClass="settings-button" onAction="#handleUploadGroupPicture"/>
-
         <Region VBox.vgrow="ALWAYS"/>
 
-        <Button fx:id="createGroupButton" text="Create Group" styleClass="primary-button" onAction="#handleCreateGroup" maxWidth="Infinity"/>
+        <Button text="Create Group" styleClass="primary-button" onAction="#handleCreateGroup" maxWidth="Infinity"/>
     </VBox>
 </VBox>

@@ -153,11 +153,6 @@ public class StartChatPopupController {
         showView(choiceView);
     }
 
-    @FXML
-    public void handleUploadGroupPicture(){
-
-    }
-
     private void showView(VBox viewToShow) {
         choiceView.setVisible(false);
         choiceView.setManaged(false);

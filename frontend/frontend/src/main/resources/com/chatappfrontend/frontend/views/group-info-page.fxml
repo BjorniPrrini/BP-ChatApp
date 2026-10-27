@@ -24,14 +24,14 @@
             </padding>
 
             <StackPane>
-                <Label fx:id="groupPictureView" styleClass="avatar-round"/>
+                <Label fx:id="groupPictureView"/>
             </StackPane>
 
             <Button fx:id="changePictureButton" text="Change Group Picture" styleClass="settings-button" onAction="#handleChangePicture"/>
 
             <TextField fx:id="groupNameField" promptText="Group name" maxWidth="320" styleClass="search-field"/>
 
-            <Button fx:id="saveButton" text="Save" styleClass="primary-button" onAction="#handleSave"/>
+            <Button text="Save" styleClass="primary-button" onAction="#handleSave"/>
 
             <Separator/>
 
