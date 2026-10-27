@@ -22,8 +22,6 @@ import java.io.File;
 
 public class GroupInfoController {
     @FXML
-    private Button saveButton;
-    @FXML
     private Label groupPictureView;
     @FXML
     private Button changePictureButton;
@@ -37,8 +35,6 @@ public class GroupInfoController {
     private Label errorLabel;
     @FXML
     private CheckBox allowInviteToggle;
-    @FXML
-    private Button leaveGroup;
 
     @Setter
     private Long currentConversationId;

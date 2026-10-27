@@ -13,7 +13,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.StackPane;
 
 import lombok.Data;
 
@@ -25,10 +24,6 @@ import java.util.Map;
 public class SummaryPanelController {
     @FXML
     private ProgressIndicator summaryLoadingIndicator;
-    @FXML
-    private Button closeSummaryButton;
-    @FXML
-    private StackPane summaryContent;
     @FXML
     private ScrollPane summaryScrollPane;
     @FXML

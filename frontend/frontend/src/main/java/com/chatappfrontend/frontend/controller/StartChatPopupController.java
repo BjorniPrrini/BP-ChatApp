@@ -24,10 +24,6 @@ public class StartChatPopupController {
     @FXML
     private VBox choiceView;
     @FXML
-    private Button newChatButton;
-    @FXML
-    private Button newGroupButton;
-    @FXML
     private VBox singleSelectView;
     @FXML
     private ListView<FriendResponseDTO> singleSelectFriendList;
@@ -43,10 +39,6 @@ public class StartChatPopupController {
     private VBox groupDetailsView;
     @FXML
     private TextField groupNameField;
-    @FXML
-    private Button uploadGroupPictureButton;
-    @FXML
-    private Button createGroupButton;
     @FXML
     private Label errorLabel;
 

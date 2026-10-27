@@ -21,19 +21,9 @@ import java.util.List;
 
 public class ChatPageController {
     @FXML
-    private Button friendsIconButton;
-    @FXML
     private VBox friendsPanel;
     @FXML
     private Label notificationLabel;
-    @FXML
-    private Pane backgroundPane;
-    @FXML
-    private Button chatsIconButton;
-    @FXML
-    private Button settingsIconButton;
-    @FXML
-    private VBox fixedPanel;
     @FXML
     private VBox conversationsPanel;
     @FXML
@@ -43,15 +33,11 @@ public class ChatPageController {
     @FXML
     private VBox settingsPanel;
     @FXML
-    private HBox chatHeader;
-    @FXML
     private Label chatNameLabel;
     @FXML
     private ScrollPane messagesScrollPane;
     @FXML
     private VBox messagesContainer;
-    @FXML
-    private HBox messageInputArea;
     @FXML
     private TextField messageInput;
     @FXML
@@ -61,13 +47,9 @@ public class ChatPageController {
     @FXML
     private VBox chatArea;
     @FXML
-    private Button createConversationButton;
-    @FXML
     private Button editGroupButton;
     @FXML
     private Button summarizeButton;
-    @FXML
-    private HBox conversationContent;
     @FXML
     private BorderPane summaryPanel;
     @FXML
@@ -105,7 +87,7 @@ public class ChatPageController {
 
         conversationListManager = new ConversationListManager(conversationList, message -> AlertUtils.showError(notificationLabel, message));
 
-        messageEventManager = new MessageEventManager(messagesContainer,messageBubbleFactory, conversationListManager, webSocketService);
+        messageEventManager = new MessageEventManager(messagesContainer, messageBubbleFactory, conversationListManager, webSocketService);
 
         messageActionManager = new MessageActionManager(messageEventManager, conversationListManager, message -> AlertUtils.showError(notificationLabel, message), messagesContainer);
 

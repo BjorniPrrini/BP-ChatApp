@@ -24,8 +24,6 @@ public class UploadProfilePictureController {
     @FXML
     private Button changePictureButton;
     @FXML
-    private Button uploadButton;
-    @FXML
     private Label errorLabel;
 
     private final UserService userService = new UserService();

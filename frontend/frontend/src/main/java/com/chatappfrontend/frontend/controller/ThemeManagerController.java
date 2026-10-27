@@ -6,7 +6,6 @@ import com.chatappfrontend.frontend.util.ThemeStorage;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
 import java.util.Properties;
@@ -22,12 +21,6 @@ public class ThemeManagerController {
     private Slider opacitySlider;
     @FXML
     private Label opacityValueLabel;
-    @FXML
-    private Button addBackgroundButton;
-    @FXML
-    private ListView<Image> backgroundList;
-    @FXML
-    private Label errorLabel;
 
     @FXML
     public void initialize() {
